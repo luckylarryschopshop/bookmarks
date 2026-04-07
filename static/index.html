@@ -1,0 +1,89 @@
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bookmark Manager</title>
+  <style>
+    body { background:#0d1117; color:#e6edf3; font-family:sans-serif; padding:20px; }
+    h1 { color:#f97316; }
+    form { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+    input, button { padding:8px; border: none; border-radius:4px; background:#1e293b; color:#e6edf3; }
+    button { background:#f97316; cursor:pointer; }
+    .bookmark-list { display:grid; gap:10px; }
+    .bookmark { background:#1e293b; padding:10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; }
+    .tags { display:flex; gap:5px; flex-wrap:wrap; }
+    .tag { background:#f97316; padding:4px 8px; border-radius:4px; font-size:0.8em; }
+    .search { margin-bottom:10px; }
+  </style>
+</head>
+<body>
+  <h1>Bookmark Manager</h1>
+  <div class="search"><input type="text" id="search" placeholder="Search bookmarks..." /></div>
+  <form id="addForm">
+    <input type="text" id="url" placeholder="URL" required />
+    <input type="text" id="title" placeholder="Title" required />
+    <input type="text" id="tags" placeholder="Tags (comma separated)" />
+    <button type="submit">Add</button>
+  </form>
+  <div class="bookmark-list" id="bookmarks"></div>
+
+  <script>
+    const api = '/api/bookmarks';
+    const bookmarksEl = document.getElementById('bookmarks');
+    const searchEl = document.getElementById('search');
+
+    async function fetchBookmarks() {
+      const res = await fetch(api);
+      const data = await res.json();
+      renderBookmarks(data);
+    }
+
+    function renderBookmarks(bookmarks) {
+      bookmarksEl.innerHTML = '';
+      bookmarks.forEach(b => {
+        const div = document.createElement('div');
+        div.className = 'bookmark';
+        div.innerHTML = `
+          <div>
+            <div><strong>${b.title}</strong> - <a href="${b.url}" target="_blank">${b.url}</a></div>
+            <div class="tags">${b.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+          </div>
+          <button onclick="deleteBookmark('${b._id}')">Delete</button>
+        `;
+        bookmarksEl.appendChild(div);
+      });
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = document.getElementById('url').value;
+      const title = document.getElementById('title').value;
+      const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
+      await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url, title, tags }) });
+      fetchBookmarks();
+      document.getElementById('addForm').reset();
+    });
+
+    async function deleteBookmark(id) {
+      await fetch(`${api}/${id}`, { method: 'DELETE' });
+      fetchBookmarks();
+    }
+
+    searchEl.addEventListener('input', () => {
+      const term = searchEl.value.toLowerCase();
+      fetchBookmarks().then(() => {
+        document.querySelectorAll('.bookmark').forEach(b => {
+          const title = b.querySelector('strong').textContent.toLowerCase();
+          const url = b.querySelector('a').textContent.toLowerCase();
+          const tags = Array.from(b.querySelectorAll('.tag')).map(t => t.textContent.toLowerCase()).join(' ');
+          b.style.display = (title.includes(term) || url.includes(term) || tags.includes(term)) ? 'flex' : 'none';
+        });
+      });
+    });
+
+    fetchBookmarks();
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+services:
+  bookmarks:
+    build: .
+    ports:
+      - "3004:8000"
+    volumes:
+      - ./data:/app/data
